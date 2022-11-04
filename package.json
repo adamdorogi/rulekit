@@ -1,0 +1,12 @@
+{
+  "name": "rulekit",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["packages/*", "apps/*"],
+  "engines": {
+    "node": ">=18.12.0"
+  },
+  "devDependencies": {
+    "typescript": "~4.8.4"
+  }
+}

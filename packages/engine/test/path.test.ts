@@ -7,3 +7,8 @@ test('resolves own object properties and array indices', () => {
   expect(resolvePath(input, ['applicant', 'drivers', 'length'])).toBe(missing);
   expect(resolvePath(input, ['constructor'])).toBe(missing);
 });
+
+test('treats a null intermediate property as a missing field', () => {
+  expect(resolvePath({ applicant: null }, ['applicant', 'age'])).toBe(missing);
+  expect(resolvePath({ applicant: null }, ['applicant'])).toBeNull();
+});

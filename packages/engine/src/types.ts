@@ -1,4 +1,4 @@
-export const operators = ['eq', 'neq', 'gt', 'lt'] as const;
+export const operators = ['eq', 'neq', 'gt', 'lt', 'gte', 'lte'] as const;
 
 export const outcomes = ['allow', 'deny', 'review'] as const;
 export const modes = ['first_match'] as const;

@@ -18,6 +18,8 @@ function makePredicate({ op, value }: Check): Predicate {
     case 'neq': return actual => !equal(actual, value);
     case 'gt': return compare(value, (actual, expected) => actual > expected);
     case 'lt': return compare(value, (actual, expected) => actual < expected);
+    case 'gte': return compare(value, (actual, expected) => actual >= expected);
+    case 'lte': return compare(value, (actual, expected) => actual <= expected);
   }
 }
 

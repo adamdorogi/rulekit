@@ -15,3 +15,14 @@ describe('equality', () => {
     expect(testValue('neq', null, missing)).toBe(false);
   });
 });
+
+describe('numeric comparisons', () => {
+  test.each([
+    ['gt', 26, true], ['gt', 25, false],
+    ['gte', 25, true], ['gte', 24, false],
+    ['lt', 24, true], ['lt', 25, false],
+    ['lte', 25, true], ['lte', 26, false]
+  ] as [Operator, number, boolean][])('%s with %s', (op, actual, expected) => {
+    expect(testValue(op, 25, actual)).toBe(expected);
+  });
+});

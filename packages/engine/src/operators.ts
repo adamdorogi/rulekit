@@ -6,10 +6,8 @@ type Predicate = (actual: unknown) => boolean;
 type CompareNumbers = (actual: number, expected: number) => boolean;
 
 function compare(expected: unknown, operation: CompareNumbers): Predicate {
-  return actual => {
-    if (typeof actual !== 'number' && typeof actual !== 'string') return false;
-    return typeof expected === 'number' && operation(Number(actual), expected);
-  };
+  return actual => typeof actual === 'number' && Number.isFinite(actual) &&
+    typeof expected === 'number' && Number.isFinite(expected) && operation(actual, expected);
 }
 
 function makePredicate({ op, value }: Check): Predicate {

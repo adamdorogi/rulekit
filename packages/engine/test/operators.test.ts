@@ -25,4 +25,11 @@ describe('numeric comparisons', () => {
   ] as [Operator, number, boolean][])('%s with %s', (op, actual, expected) => {
     expect(testValue(op, 25, actual)).toBe(expected);
   });
+
+  test('does not coerce strings, null, or booleans to numbers', () => {
+    expect(testValue('gt', 25, '26')).toBe(false);
+    expect(testValue('lt', 25, null)).toBe(false);
+    expect(testValue('lt', 25, false)).toBe(false);
+    expect(testValue('gt', 25, Infinity)).toBe(false);
+  });
 });

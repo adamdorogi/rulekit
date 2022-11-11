@@ -10,6 +10,10 @@ function compare(expected: unknown, operation: CompareNumbers): Predicate {
     typeof expected === 'number' && Number.isFinite(expected) && operation(actual, expected);
 }
 
+function includes(list: unknown, value: unknown): boolean {
+  return Array.isArray(list) && list.some(item => equal(item, value));
+}
+
 function makePredicate({ op, value }: Check): Predicate {
   switch (op) {
     case 'eq': return actual => equal(actual, value);
@@ -18,6 +22,8 @@ function makePredicate({ op, value }: Check): Predicate {
     case 'lt': return compare(value, (actual, expected) => actual < expected);
     case 'gte': return compare(value, (actual, expected) => actual >= expected);
     case 'lte': return compare(value, (actual, expected) => actual <= expected);
+    case 'in': return actual => includes(value, actual);
+    case 'not_in': return actual => Array.isArray(value) && !includes(value, actual);
   }
 }
 

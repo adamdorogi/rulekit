@@ -34,10 +34,13 @@ describe('numeric comparisons', () => {
   });
 });
 
-describe('membership', () => {
-  test('handles membership and exclusion', () => {
+describe('membership and presence', () => {
+  test('handles arrays and string containment', () => {
     expect(testValue('in', ['AU', 'NZ'], 'AU')).toBe(true);
     expect(testValue('not_in', ['AU', 'NZ'], 'GB')).toBe(true);
     expect(testValue('in', [{ code: 'AU' }], { code: 'AU' })).toBe(true);
+    expect(testValue('contains', 'trade', 'retail trade')).toBe(true);
+    expect(testValue('contains', 3, [1, 3])).toBe(true);
+    expect(testValue('contains', 3, '31')).toBe(false);
   });
 });

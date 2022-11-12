@@ -24,6 +24,9 @@ function makePredicate({ op, value }: Check): Predicate {
     case 'lte': return compare(value, (actual, expected) => actual <= expected);
     case 'in': return actual => includes(value, actual);
     case 'not_in': return actual => Array.isArray(value) && !includes(value, actual);
+    case 'contains': return actual => typeof actual === 'string' && typeof value === 'string'
+      ? actual.includes(value)
+      : includes(actual, value);
   }
 }
 

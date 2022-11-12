@@ -33,3 +33,11 @@ describe('numeric comparisons', () => {
     expect(testValue('gt', 25, Infinity)).toBe(false);
   });
 });
+
+describe('membership', () => {
+  test('handles membership and exclusion', () => {
+    expect(testValue('in', ['AU', 'NZ'], 'AU')).toBe(true);
+    expect(testValue('not_in', ['AU', 'NZ'], 'GB')).toBe(true);
+    expect(testValue('in', [{ code: 'AU' }], { code: 'AU' })).toBe(true);
+  });
+});

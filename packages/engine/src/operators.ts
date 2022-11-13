@@ -27,10 +27,11 @@ function makePredicate({ op, value }: Check): Predicate {
     case 'contains': return actual => typeof actual === 'string' && typeof value === 'string'
       ? actual.includes(value)
       : includes(actual, value);
+    case 'exists': return actual => (actual !== missing) === (value !== false);
   }
 }
 
 export function compilePredicate(check: Check): Predicate {
   const test = makePredicate(check);
-  return actual => actual !== missing && test(actual);
+  return check.op === 'exists' ? test : actual => actual !== missing && test(actual);
 }

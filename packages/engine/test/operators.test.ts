@@ -43,4 +43,11 @@ describe('membership and presence', () => {
     expect(testValue('contains', 3, [1, 3])).toBe(true);
     expect(testValue('contains', 3, '31')).toBe(false);
   });
+
+  test('distinguishes missing fields from null', () => {
+    expect(testValue('exists', undefined, null)).toBe(true);
+    expect(testValue('exists', false, null)).toBe(false);
+    expect(testValue('exists', false, missing)).toBe(true);
+    expect(testValue('not_in', [null], missing)).toBe(false);
+  });
 });

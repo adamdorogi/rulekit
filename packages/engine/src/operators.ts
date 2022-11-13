@@ -1,5 +1,6 @@
 import { equal } from './equality';
 import { missing } from './path';
+import { compileRegex } from './regex';
 import { Check } from './types';
 
 type Predicate = (actual: unknown) => boolean;
@@ -19,14 +20,18 @@ function makePredicate({ op, value }: Check): Predicate {
     case 'eq': return actual => equal(actual, value);
     case 'neq': return actual => !equal(actual, value);
     case 'gt': return compare(value, (actual, expected) => actual > expected);
-    case 'lt': return compare(value, (actual, expected) => actual < expected);
     case 'gte': return compare(value, (actual, expected) => actual >= expected);
+    case 'lt': return compare(value, (actual, expected) => actual < expected);
     case 'lte': return compare(value, (actual, expected) => actual <= expected);
     case 'in': return actual => includes(value, actual);
     case 'not_in': return actual => Array.isArray(value) && !includes(value, actual);
     case 'contains': return actual => typeof actual === 'string' && typeof value === 'string'
       ? actual.includes(value)
       : includes(actual, value);
+    case 'regex': {
+      const test = typeof value === 'string' ? compileRegex(value) : undefined;
+      return actual => typeof actual === 'string' && (test?.(actual) ?? false);
+    }
     case 'exists': return actual => (actual !== missing) === (value !== false);
   }
 }

@@ -1,4 +1,4 @@
-import { evaluateRuleset } from '../src/evaluate';
+import { compileRuleset, evaluateRuleset } from '../src/evaluate';
 import { Ruleset } from '../src/types';
 
 const ruleset: Ruleset = {
@@ -40,4 +40,16 @@ test('first match stops after a matching rule', () => {
   expect(result.matchedRuleIds).toEqual(['young-driver']);
   expect(result.outputs).toEqual({ excess: 1200, currency: 'AUD' });
   expect(result.durationUs).toBeGreaterThanOrEqual(0);
+});
+
+test('all matches accumulates outputs in order and uses the strongest outcome', () => {
+  const evaluate = compileRuleset({ ...ruleset, mode: 'all_matches' });
+  expect(evaluate(input)).toMatchObject({
+    outcome: 'deny',
+    matchedRuleIds: ['young-driver', 'recent-claims'],
+    outputs: { excess: 2000, currency: 'AUD' }
+  });
+  expect(evaluate({})).toMatchObject({
+    outcome: 'allow', matchedRuleIds: [], outputs: { excess: 500, currency: 'AUD' }
+  });
 });

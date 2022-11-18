@@ -1,7 +1,7 @@
 export const operators = ['eq', 'neq', 'gt', 'lt', 'gte', 'lte', 'in', 'not_in', 'contains', 'exists', 'regex'] as const;
 
 export const outcomes = ['allow', 'deny', 'review'] as const;
-export const modes = ['first_match'] as const;
+export const modes = ['first_match', 'all_matches'] as const;
 
 export type Operator = typeof operators[number];
 export type Outcome = typeof outcomes[number];

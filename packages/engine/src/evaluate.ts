@@ -4,6 +4,8 @@ import { Condition, EvaluationResult, Outcome, Ruleset } from './types';
 
 type ConditionTest = (input: unknown) => boolean;
 
+const priority: Record<Outcome, number> = { allow: 0, review: 1, deny: 2 };
+
 function compileCondition(condition: Condition, ruleId: string): ConditionTest {
   if ('all' in condition) {
     const tests = condition.all.map(child => compileCondition(child, ruleId));
@@ -24,7 +26,7 @@ function compileCondition(condition: Condition, ruleId: string): ConditionTest {
 }
 
 export function compileRuleset(ruleset: Ruleset): (input: unknown) => EvaluationResult {
-  const { defaultOutcome, defaultOutputs } = ruleset;
+  const { mode, defaultOutcome, defaultOutputs } = ruleset;
   const rules = ruleset.rules.map(({ id, when, outcome, outputs }) => ({
     id, outcome, outputs, test: compileCondition(when, id)
   }));
@@ -38,8 +40,8 @@ export function compileRuleset(ruleset: Ruleset): (input: unknown) => Evaluation
       if (!rule.test(input)) continue;
       matchedRuleIds.push(rule.id);
       outputs = { ...outputs, ...rule.outputs };
-      outcome = rule.outcome;
-      break;
+      if (!outcome || priority[rule.outcome] > priority[outcome]) outcome = rule.outcome;
+      if (mode === 'first_match') break;
     }
     return {
       outcome: outcome ?? defaultOutcome,

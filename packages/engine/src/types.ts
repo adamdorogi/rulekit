@@ -1,4 +1,7 @@
-export const operators = ['eq', 'neq', 'gt', 'lt', 'gte', 'lte', 'in', 'not_in', 'contains', 'exists', 'regex'] as const;
+export const operators = [
+  'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'not_in',
+  'contains', 'regex', 'exists'
+] as const;
 
 export const outcomes = ['allow', 'deny', 'review'] as const;
 export const modes = ['first_match', 'all_matches'] as const;
@@ -34,9 +37,20 @@ export interface Ruleset {
   defaultOutputs?: Record<string, unknown>;
 }
 
+export interface StepTrace {
+  ruleId: string;
+  field: string;
+  op: Operator;
+  actual: unknown;
+  expected: unknown;
+  passed: boolean;
+  missing?: boolean;
+}
+
 export interface EvaluationResult {
   outcome: Outcome;
   outputs: Record<string, unknown>;
   matchedRuleIds: string[];
   durationUs: number;
+  trace: StepTrace[];
 }

@@ -34,11 +34,17 @@ const input = {
   history: { claims_count: 2 }
 };
 
-test('first match stops after a matching rule', () => {
+test('first match traces visited checks through nested groups', () => {
   const result = evaluateRuleset(ruleset, input);
   expect(result.outcome).toBe('review');
   expect(result.matchedRuleIds).toEqual(['young-driver']);
   expect(result.outputs).toEqual({ excess: 1200, currency: 'AUD' });
+  expect(result.trace.map(step => step.passed)).toEqual([true, false, true, false]);
+  expect(result.trace[1]).toEqual({
+    ruleId: 'young-driver', field: 'vehicle.value_aud', op: 'gt',
+    actual: 65000, expected: 85000, passed: false
+  });
+  expect(result.trace[3]).toMatchObject({ actual: null, expected: true, missing: true });
   expect(result.durationUs).toBeGreaterThanOrEqual(0);
 });
 

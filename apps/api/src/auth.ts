@@ -54,4 +54,13 @@ export function authRoutes(app: FastifyInstance, db: PrismaClient): void {
     reply.setCookie(sessionCookie, token, { ...cookie, maxAge: 8 * 60 * 60 })
     return profile(user.email, membership, membership.workspace.name)
   })
+
+  app.get('/v1/auth/me', async (request) => {
+    const membership = await member(db, request)
+    return profile(membership.user.email, membership, membership.workspace.name)
+  })
+
+  app.post('/v1/auth/logout', async (_request, reply) => {
+    return reply.clearCookie(sessionCookie, cookie).code(204).send()
+  })
 }

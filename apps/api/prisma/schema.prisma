@@ -26,6 +26,7 @@ model Workspace {
   name        String
   memberships Membership[]
   projects    Project[]
+  apiKeys     ApiKey[]
 }
 
 model Membership {
@@ -47,4 +48,15 @@ model Project {
   createdAt       DateTime         @default(now())
 
   @@unique([workspaceId, slug])
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  prefix      String
+  hash        String    @unique
+  createdAt   DateTime  @default(now())
+  revokedAt   DateTime?
 }

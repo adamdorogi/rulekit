@@ -3,12 +3,14 @@ import { Membership, PrismaClient, Role } from '@prisma/client'
 import { compare } from 'bcryptjs'
 import { z } from 'zod'
 import { settings } from './config'
+import { sha256 } from './crypto'
 import { HttpError } from './errors'
 
 const sessionCookie = 'rk_session'
 const cookie = { path: '/', httpOnly: true, secure: settings.secureCookie, sameSite: 'lax', signed: true } as const
 const fallbackHash = '$2a$12$Q0qBLj7SIO/o5CLg4cvFluT46G8tm4OfBlhT8R6oBlHP9PfrKpdUa'
 const roleOrder: Record<Role, number> = { viewer: 0, editor: 1, admin: 2 }
+const keySelect = { id: true, name: true, prefix: true, createdAt: true, revokedAt: true } as const
 
 export async function member(db: PrismaClient, request: FastifyRequest, minimum: Role = 'viewer') {
   const rawCookie = request.cookies[sessionCookie]
@@ -28,6 +30,15 @@ export async function member(db: PrismaClient, request: FastifyRequest, minimum:
   if (!membership) throw new HttpError(401, 'Session has expired')
   if (roleOrder[membership.role] < roleOrder[minimum]) throw new HttpError(403, 'Insufficient workspace access')
   return membership
+}
+
+export async function evaluationWorkspace(db: PrismaClient, request: FastifyRequest): Promise<string> {
+  const authorization = request.headers.authorization
+  const key = /^(?:Bearer) (rk_live_[A-Za-z0-9_-]+)$/i.exec(authorization || '')?.[1]
+  if (!key || key.length > 128) throw new HttpError(401, 'API key required')
+  const record = await db.apiKey.findUnique({ where: { hash: sha256(key) } })
+  if (!record || record.revokedAt) throw new HttpError(401, 'Invalid API key')
+  return record.workspaceId
 }
 
 function profile(email: string, membership: Membership, workspaceName: string) {
@@ -63,4 +74,5 @@ export function authRoutes(app: FastifyInstance, db: PrismaClient): void {
   app.post('/v1/auth/logout', async (_request, reply) => {
     return reply.clearCookie(sessionCookie, cookie).code(204).send()
   })
+
 }

@@ -14,6 +14,11 @@ enum Role {
   viewer
 }
 
+enum Outcome {
+  allow
+  deny
+}
+
 model User {
   id           String       @id @default(cuid())
   email        String       @unique
@@ -46,6 +51,11 @@ model Project {
   slug            String
   name            String
   createdAt       DateTime         @default(now())
+  activeVersionId String?          @unique
+  activeVersion   RulesetVersion?  @relation("ActiveVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  versions        RulesetVersion[] @relation("ProjectVersions")
+  draft           Draft?
+  evaluations     EvaluationLog[]
 
   @@unique([workspaceId, slug])
 }
@@ -59,4 +69,45 @@ model ApiKey {
   hash        String    @unique
   createdAt   DateTime  @default(now())
   revokedAt   DateTime?
+}
+
+model Draft {
+  projectId  String   @id
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ruleset    Json
+  updatedAt  DateTime @updatedAt
+}
+
+model RulesetVersion {
+  id          String          @id @default(cuid())
+  projectId   String
+  project     Project         @relation("ProjectVersions", fields: [projectId], references: [id], onDelete: Cascade)
+  activeFor   Project?        @relation("ActiveVersion")
+  number      Int
+  checksum    String
+  ruleset     Json
+  note        String?
+  createdAt   DateTime        @default(now())
+  evaluations EvaluationLog[]
+
+  @@unique([projectId, number])
+}
+
+model EvaluationLog {
+  id             String         @id @default(cuid())
+  projectId      String
+  project        Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versionId      String
+  version        RulesetVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  versionNumber  Int
+  input          Json
+  outputs        Json
+  matchedRuleIds String[]
+  outcome        Outcome
+  durationUs     Int
+  trace          Json
+  createdAt      DateTime       @default(now())
+
+  @@unique([projectId, idempotencyKey])
+  @@index([projectId, createdAt])
 }

@@ -50,4 +50,23 @@ export class RulesetCache {
     return { version, hit: false }
   }
 
+  clear(): void {
+    this.epoch++
+    this.active.clear()
+  }
+
+  invalidate(workspaceId: string, slug: string): void {
+    this.handleMessage(invalidationChannel, `${workspaceId}:${slug}`)
+  }
+
+  handleMessage(channel: string, key: string): void {
+    if (channel !== invalidationChannel) return
+    this.epoch++
+    this.active.delete(key)
+  }
+
+  async publish(workspaceId: string, slug: string): Promise<void> {
+    this.invalidate(workspaceId, slug)
+    await this.redis.publish(invalidationChannel, `${workspaceId}:${slug}`)
+  }
 }

@@ -3,7 +3,7 @@ import { Membership, PrismaClient, Role } from '@prisma/client'
 import { compare } from 'bcryptjs'
 import { z } from 'zod'
 import { settings } from './config'
-import { sha256 } from './crypto'
+import { newAPIKey, sha256 } from './crypto'
 import { HttpError } from './errors'
 
 const sessionCookie = 'rk_session'
@@ -75,4 +75,29 @@ export function authRoutes(app: FastifyInstance, db: PrismaClient): void {
     return reply.clearCookie(sessionCookie, cookie).code(204).send()
   })
 
+  app.get('/v1/api-keys', async (request) => {
+    const { workspaceId } = await member(db, request, 'admin')
+    return db.apiKey.findMany({ where: { workspaceId }, select: keySelect, orderBy: { createdAt: 'desc' } })
+  })
+
+  app.post('/v1/api-keys', async (request, reply) => {
+    const { workspaceId } = await member(db, request, 'admin')
+    const { name } = z.object({ name: z.string().trim().min(1).max(100) }).parse(request.body)
+    const key = newAPIKey()
+    const row = await db.apiKey.create({
+      data: { workspaceId, name, prefix: key.slice(0, 16), hash: sha256(key) },
+      select: keySelect,
+    })
+    return reply.code(201).send({ ...row, key })
+  })
+
+  app.delete<{ Params: { id: string } }>('/v1/api-keys/:id', async (request, reply) => {
+    const { workspaceId } = await member(db, request, 'admin')
+    const changed = await db.apiKey.updateMany({
+      where: { workspaceId, id: request.params.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+    if (!changed.count) throw new HttpError(404, 'Active API key not found')
+    return reply.code(204).send()
+  })
 }

@@ -7,6 +7,7 @@ import Redis from 'ioredis'
 import { authRoutes } from './auth'
 import { invalidationChannel, RulesetCache } from './cache'
 import { evaluationRoutes } from './evaluations'
+import { Metrics } from './metrics'
 import { settings } from './config'
 
 export async function createServer() {
@@ -21,7 +22,8 @@ export async function createServer() {
   await subscriber.subscribe(invalidationChannel)
   subscriber.on('message', (channel, key) => cache.handleMessage(channel, key))
   authRoutes(app, db)
-  evaluationRoutes(app, db, cache)
+  const metrics = new Metrics()
+  evaluationRoutes(app, db, cache, metrics)
   app.addHook('onClose', async () => {
     await Promise.all([redis.quit(), subscriber.quit(), db.$disconnect()])
   })

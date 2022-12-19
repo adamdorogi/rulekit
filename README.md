@@ -1,12 +1,15 @@
 # rulekit
 
-Self-hosted JSON decision rules for underwriting and eligibility checks.
-Put spreadsheet rules behind an HTTP endpoint with a review queue.
+Self-hosted JSON rules for underwriting and eligibility checks.
 
-## todo
+## local API
 
-- rule engine
-- fastify api + web ui
-- signed callbacks
+```sh
+cp .env.example .env
+docker-compose up -d
+npm install
+npm run db:setup
+npm run start -w @rulekit/api
+```
 
-Keep the evaluator independent of storage.
+The seed adds a motor underwriting workspace and a local evaluation key.

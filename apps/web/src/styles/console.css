@@ -1,0 +1,84 @@
+body {
+  background: #f8f9fa;
+}
+
+.console-aside {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 220px;
+  overflow-y: auto;
+}
+
+.console-aside .nav-link {
+  color: #dee2e6;
+  border-radius: .25rem;
+}
+
+.console-aside .nav-link.active,
+.console-aside .nav-link:hover {
+  background: #343a40;
+  color: #fff;
+}
+
+.console-body {
+  margin-left: 220px;
+  min-height: 100vh;
+}
+
+.console-content {
+  max-width: 1460px;
+}
+
+.card, .btn, .form-control, .form-select, .alert, .modal-content {
+  border-radius: .25rem;
+}
+
+.table th {
+  white-space: nowrap;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.rule-condition {
+  border-left: 2px solid #dee2e6;
+  padding-left: .75rem;
+}
+
+.json-edit, .json-display {
+  font-family: var(--bs-font-monospace);
+}
+
+.json-display {
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.trace-values {
+  overflow-wrap: anywhere;
+}
+
+.flow-panel {
+  height: 340px;
+}
+
+.login-card {
+  width: min(100%, 400px);
+}
+
+@media (max-width: 767.98px) {
+  .console-aside {
+    position: static;
+    width: auto;
+  }
+
+  .console-body {
+    margin-left: 0;
+  }
+
+  .console-aside .nav {
+    flex-direction: row !important;
+  }
+}

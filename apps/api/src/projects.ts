@@ -42,3 +42,38 @@ function draftContents(draft: { ruleset: Prisma.JsonValue }) {
   const ruleset = rulesetSchema.parse(draft.ruleset)
   return { ...draft, ruleset, issues: [] }
 }
+
+export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: RulesetCache): void {
+  app.get('/v1/projects', async (request) => {
+    const { workspaceId } = await member(db, request)
+    const [projects, evaluationCounts] = await Promise.all([
+      db.project.findMany({ where: { workspaceId }, include: projectDetails, orderBy: { slug: 'asc' } }),
+      db.evaluationLog.groupBy({
+        by: ['projectId'],
+        where: { project: { workspaceId }, createdAt: { gte: new Date(Date.now() - ttl24h) } },
+        _count: { _all: true },
+      }),
+    ])
+    const counts = new Map(evaluationCounts.map(({ projectId, _count }) => [projectId, _count._all]))
+    return projects.map((project) => summary(project, counts.get(project.id)))
+  })
+
+  app.post('/v1/projects', async (request, reply) => {
+    const { workspaceId } = await member(db, request, 'editor')
+    const { slug, name, mode } = projectBody.parse(request.body)
+    const row = await db.project.create({
+      data: { workspaceId, slug, name, draft: { create: { ruleset: { mode, rules: [], defaultOutcome: 'review' } } } },
+      include: projectDetails,
+    })
+    return reply.code(201).send(summary(row))
+  })
+
+  app.get<{ Params: { slug: string } }>('/v1/projects/:slug', async (request) => {
+    const { workspaceId } = await member(db, request)
+    const project = await projectForSlug(db, workspaceId, request.params.slug)
+    const count = await db.evaluationLog.count({
+      where: { projectId: project.id, createdAt: { gte: new Date(Date.now() - ttl24h) } },
+    })
+    return summary(project, count)
+  })
+}

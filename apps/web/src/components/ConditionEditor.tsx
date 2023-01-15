@@ -38,9 +38,32 @@ interface Props {
 }
 
 export function ConditionEditor({ condition, onChange, onRemove, readOnly }: Props) {
+  const kind = 'all' in condition ? 'all' : 'any' in condition ? 'any' : 'not' in condition ? 'not' : 'leaf';
+  const children = 'all' in condition ? condition.all : 'any' in condition ? condition.any : 'not' in condition ? [condition.not] : [];
+
+  function changeKind(next: string) {
+    const members = children.length ? children : [condition];
+    if (next === 'all') onChange({ all: members });
+    if (next === 'any') onChange({ any: members });
+    if (next === 'not') onChange({ not: members[0] });
+    if (next === 'leaf') onChange('field' in members[0] ? members[0] : newCondition());
+  }
+
+  function applyChildren(next: Condition[]) {
+    if (kind === 'all') onChange({ all: next });
+    if (kind === 'any') onChange({ any: next });
+    if (kind === 'not' && next.length) onChange({ not: next[0] });
+  }
+
   return (
     <div className="mb-2">
       <InputGroup size="sm" className="mb-1">
+        <Form.Select value={kind} onChange={(event) => changeKind(event.target.value)} aria-label="Condition type" disabled={readOnly}>
+          <option value="leaf">Condition</option>
+          <option value="all">All (AND)</option>
+          <option value="any">Any (OR)</option>
+          <option value="not">Not</option>
+        </Form.Select>
         {'field' in condition && (
           <>
             <Form.Control value={condition.field} placeholder="applicant.age" aria-label="Field path" readOnly={readOnly} onChange={(event) => onChange({ ...condition, field: event.target.value })} />
@@ -61,6 +84,22 @@ export function ConditionEditor({ condition, onChange, onRemove, readOnly }: Pro
         )}
         {onRemove && !readOnly && <Button variant="outline-secondary" aria-label="Remove condition" onClick={onRemove}>Remove</Button>}
       </InputGroup>
+      {kind !== 'leaf' && (
+        <div className="rule-condition">
+          {children.map((child, index) => (
+            <ConditionEditor
+              key={index}
+              condition={child}
+              readOnly={readOnly}
+              onChange={(value) => applyChildren(children.map((part, i) => i === index ? value : part))}
+              onRemove={kind !== 'not' && children.length > 1 ? () => applyChildren(children.filter((_, i) => i !== index)) : undefined}
+            />
+          ))}
+          {(kind === 'all' || kind === 'any') && !readOnly && (
+            <Button variant="outline-secondary" size="sm" onClick={() => applyChildren([...children, newCondition()])}>Add condition</Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

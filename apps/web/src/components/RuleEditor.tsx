@@ -64,6 +64,12 @@ export function RuleEditor({ ruleset, onChange, readOnly }: { ruleset: Ruleset; 
     onChange({ ...ruleset, rules: ruleset.rules.map((rule, i) => i === index ? value : rule) });
   }
 
+  function move(index: number, offset: number) {
+    const next = [...ruleset.rules];
+    [next[index], next[index + offset]] = [next[index + offset], next[index]];
+    onChange({ ...ruleset, rules: next });
+  }
+
   function add() {
     let index = ruleset.rules.length + 1;
     while (ruleset.rules.some((rule) => rule.id === 'rule-' + index)) index++;
@@ -107,6 +113,8 @@ export function RuleEditor({ ruleset, onChange, readOnly }: { ruleset: Ruleset; 
             </div>
             {!readOnly && (
               <div className="d-flex gap-1">
+                <Button size="sm" variant="outline-secondary" disabled={index === 0} aria-label={'Move ' + rule.id + ' up'} onClick={() => move(index, -1)}>Up</Button>
+                <Button size="sm" variant="outline-secondary" disabled={index === ruleset.rules.length - 1} aria-label={'Move ' + rule.id + ' down'} onClick={() => move(index, 1)}>Down</Button>
                 <Button size="sm" variant="outline-secondary" aria-label={'Remove rule ' + rule.id} onClick={() => onChange({ ...ruleset, rules: ruleset.rules.filter((item) => item.id !== rule.id) })}>Remove</Button>
               </div>
             )}

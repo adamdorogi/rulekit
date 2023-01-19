@@ -76,4 +76,26 @@ export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: Rul
     })
     return summary(project, count)
   })
+
+  app.get<{ Params: { slug: string } }>('/v1/projects/:slug/draft', async (request) => {
+    const { workspaceId } = await member(db, request)
+    const project = await projectForSlug(db, workspaceId, request.params.slug)
+    if (!project.draft) throw new HttpError(404, 'Draft not found')
+    return draftContents(project.draft)
+  })
+
+  app.put<{ Params: { slug: string } }>('/v1/projects/:slug/draft', async (request) => {
+    const { workspaceId } = await member(db, request, 'editor')
+    const project = await projectForSlug(db, workspaceId, request.params.slug)
+    const { ruleset } = z.object({
+      ruleset: rulesetSchema,
+    }).parse(request.body)
+    const json = ruleset as unknown as Prisma.InputJsonObject
+    const draft = await db.draft.upsert({
+      where: { projectId: project.id },
+      update: { ruleset: json },
+      create: { projectId: project.id, ruleset: json },
+    })
+    return draftContents(draft)
+  })
 }

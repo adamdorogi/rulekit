@@ -98,4 +98,31 @@ export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: Rul
     })
     return draftContents(draft)
   })
+
+  app.post<{ Params: { slug: string } }>('/v1/projects/:slug/publish', async (request, reply) => {
+    const { workspaceId } = await member(db, request, 'editor')
+    const { slug } = request.params
+    const project = await projectForSlug(db, workspaceId, slug)
+    const { note } = z.object({ note: z.string().trim().max(2000).optional() }).parse(request.body || {})
+    const version = await db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Project" WHERE id = ${project.id} FOR UPDATE`
+      const draft = await tx.draft.findUnique({ where: { projectId: project.id } })
+      if (!draft) throw new HttpError(404, 'Draft not found')
+      const ruleset = rulesetSchema.parse(draft.ruleset)
+      const last = await tx.rulesetVersion.findFirst({ where: { projectId: project.id }, orderBy: { number: 'desc' } })
+      const release = await tx.rulesetVersion.create({
+        data: {
+          projectId: project.id,
+          number: (last?.number || 0) + 1,
+          note,
+          ruleset: ruleset as unknown as Prisma.InputJsonObject,
+          checksum: sha256(canonicalJson(ruleset)),
+        },
+      })
+      await tx.project.update({ where: { id: project.id }, data: { activeVersionId: release.id } })
+      return release
+    })
+    await cache.publish(workspaceId, slug).catch((error) => request.log.warn(error, 'cache invalidation failed'))
+    return reply.code(201).send(version)
+  })
 }

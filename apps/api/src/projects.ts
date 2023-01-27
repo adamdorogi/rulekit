@@ -125,4 +125,34 @@ export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: Rul
     await cache.publish(workspaceId, slug).catch((error) => request.log.warn(error, 'cache invalidation failed'))
     return reply.code(201).send(version)
   })
+
+  app.get<{ Params: { slug: string } }>('/v1/projects/:slug/versions', async (request) => {
+    const { workspaceId } = await member(db, request)
+    const project = await projectForSlug(db, workspaceId, request.params.slug)
+    return db.rulesetVersion.findMany({ where: { projectId: project.id }, orderBy: { number: 'desc' } })
+  })
+
+  app.post<{ Params: { slug: string; number: string } }>('/v1/projects/:slug/versions/:number/rollback', async (request) => {
+    const { workspaceId } = await member(db, request, 'editor')
+    const { slug } = request.params
+    const number = z.number().int().min(1).max(2147483647).parse(Number(request.params.number))
+    const project = await projectForSlug(db, workspaceId, slug)
+    const version = await db.rulesetVersion.findUnique({ where: { projectId_number: { projectId: project.id, number } } })
+    if (!version) throw new HttpError(404, 'Version not found')
+    await db.project.update({ where: { id: project.id }, data: { activeVersionId: version.id } })
+    await cache.publish(workspaceId, slug).catch((error) => request.log.warn(error, 'cache invalidation failed'))
+    return version
+  })
+
+  app.post<{ Params: { slug: string } }>('/v1/projects/:slug/playground', async (request) => {
+    const { workspaceId } = await member(db, request)
+    const { input, source } = z.object({
+      input: z.record(z.unknown()),
+      source: z.enum(['draft', 'active']).default('draft'),
+    }).parse(request.body)
+    const project = await projectForSlug(db, workspaceId, request.params.slug)
+    const row = source === 'draft' ? project.draft : project.activeVersion
+    if (!row) throw new HttpError(404, 'Ruleset not found')
+    return evaluateRuleset(rulesetSchema.parse(row.ruleset), input)
+  })
 }

@@ -10,7 +10,7 @@
     "node": ">=18.12.0"
   },
   "devDependencies": {
-    "typescript": "~4.8.4"
+    "typescript": "~4.9.5"
   },
   "scripts": {
     "build": "npm run build -w @rulekit/engine && npm run db:generate -w @rulekit/api && npm run build -w @rulekit/api && npm run build -w @rulekit/web",

@@ -17,6 +17,13 @@ enum Role {
 enum Outcome {
   allow
   deny
+  review
+}
+
+enum ReviewStatus {
+  pending
+  approved
+  rejected
 }
 
 model User {
@@ -24,6 +31,7 @@ model User {
   email        String       @unique
   passwordHash String
   memberships  Membership[]
+  reviews      ReviewTask[]
 }
 
 model Workspace {
@@ -107,7 +115,20 @@ model EvaluationLog {
   durationUs     Int
   trace          Json
   createdAt      DateTime       @default(now())
+  review         ReviewTask?
 
   @@unique([projectId, idempotencyKey])
   @@index([projectId, createdAt])
+}
+
+model ReviewTask {
+  id           String       @id @default(cuid())
+  evaluationId String      @unique
+  evaluation   EvaluationLog @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  status       ReviewStatus @default(pending)
+  reviewerId   String?
+  reviewer     User?        @relation(fields: [reviewerId], references: [id], onDelete: SetNull)
+  note         String?
+  createdAt    DateTime     @default(now())
+  resolvedAt   DateTime?
 }

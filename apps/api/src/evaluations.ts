@@ -28,6 +28,9 @@ export function evaluationRoutes(app: FastifyInstance, db: PrismaClient, cache: 
             trace: JSON.parse(JSON.stringify(result.trace)) as Prisma.InputJsonArray,
           },
         })
+        if (result.outcome === 'review') {
+          await tx.reviewTask.create({ data: { evaluationId: entry.id } })
+        }
         return entry
       })
       metrics.record(result.outcome, result.durationUs, hit)

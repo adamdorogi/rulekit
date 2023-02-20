@@ -12,6 +12,7 @@ import { HttpError } from './errors'
 import { evaluationRoutes } from './evaluations'
 import { Metrics } from './metrics'
 import { projectRoutes } from './projects'
+import { reviewRoutes } from './reviews'
 
 export async function buildServer(options: FastifyServerOptions = {}) {
   const app = Fastify({
@@ -71,5 +72,6 @@ export async function buildServer(options: FastifyServerOptions = {}) {
   authRoutes(app, db)
   projectRoutes(app, db, cache)
   evaluationRoutes(app, db, cache, metrics)
+  reviewRoutes(app, db)
   return app
 }

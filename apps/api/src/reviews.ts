@@ -21,4 +21,25 @@ export function reviewRoutes(app: FastifyInstance, db: PrismaClient): void {
       take: 100,
     })
   })
+
+  app.post<{ Params: { id: string } }>('/v1/reviews/:id/resolve', async (request) => {
+    const { workspaceId, userId } = await member(db, request, 'editor')
+    const { status, note } = z.object({
+      status: z.enum(['approved', 'rejected']),
+      note: z.string().trim().max(2000).optional(),
+    }).parse(request.body)
+    const { id } = request.params
+    return db.$transaction(async (tx) => {
+      const allowed = { id, evaluation: { project: { workspaceId } } }
+      const task = await tx.reviewTask.findFirst({ where: allowed, select: { id: true } })
+      if (!task) throw new HttpError(404, 'Review not found')
+      const result = await tx.reviewTask.updateMany({
+        where: { ...allowed, status: 'pending' },
+        data: { status, note, reviewerId: userId, resolvedAt: new Date() },
+      })
+      if (!result.count) throw new HttpError(409, 'Review already resolved')
+      const review = await tx.reviewTask.findUniqueOrThrow({ where: { id }, include: details })
+      return review
+    })
+  })
 }

@@ -10,6 +10,7 @@ import { RequestError } from './Feedback';
 
 const sections = [
   { href: '/projects', text: 'Projects', icon: 'collection' },
+  { href: '/reviews', text: 'Review queue', icon: 'inboxes' },
 ];
 
 export function Shell({ title, children }: { title: string; children: ReactNode | ((session: Session) => ReactNode) }) {

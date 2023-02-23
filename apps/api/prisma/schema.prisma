@@ -26,6 +26,12 @@ enum ReviewStatus {
   rejected
 }
 
+enum DeliveryStatus {
+  pending
+  delivered
+  dead
+}
+
 model User {
   id           String       @id @default(cuid())
   email        String       @unique
@@ -40,6 +46,8 @@ model Workspace {
   memberships Membership[]
   projects    Project[]
   apiKeys     ApiKey[]
+  webhooks    WebhookEndpoint[]
+  events      OutboxEvent[]
 }
 
 model Membership {
@@ -131,4 +139,43 @@ model ReviewTask {
   note         String?
   createdAt    DateTime     @default(now())
   resolvedAt   DateTime?
+}
+
+model WebhookEndpoint {
+  id          String            @id @default(cuid())
+  workspaceId String
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  url         String
+  events      String[]
+  secret      String
+  createdAt   DateTime          @default(now())
+  deliveries  WebhookDelivery[]
+}
+
+model OutboxEvent {
+  id          String            @id @default(cuid())
+  workspaceId String
+  workspace   Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type        String
+  payload     Json
+  createdAt   DateTime          @default(now())
+  deliveries  WebhookDelivery[]
+}
+
+model WebhookDelivery {
+  id          String          @id @default(cuid())
+  endpointId  String
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  eventId     String
+  event       OutboxEvent     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  status      DeliveryStatus  @default(pending)
+  attempts    Int             @default(0)
+  generation  Int             @default(0)
+  statusCode  Int?
+  lastError   String?
+  createdAt   DateTime        @default(now())
+  attemptedAt DateTime?
+
+  @@unique([eventId, endpointId])
+  @@index([status, attemptedAt])
 }

@@ -3,6 +3,7 @@ import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { member } from './auth'
 import { HttpError } from './errors'
+import { writeEvent } from './outbox'
 
 const details = {
   evaluation: {
@@ -39,6 +40,13 @@ export function reviewRoutes(app: FastifyInstance, db: PrismaClient): void {
       })
       if (!result.count) throw new HttpError(409, 'Review already resolved')
       const review = await tx.reviewTask.findUniqueOrThrow({ where: { id }, include: details })
+      await writeEvent(tx, workspaceId, 'review.resolved', {
+        reviewId: id,
+        evaluationId: review.evaluationId,
+        projectSlug: review.evaluation.project.slug,
+        status,
+        note: note || null,
+      })
       return review
     })
   })

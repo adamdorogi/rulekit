@@ -5,6 +5,7 @@ import { evaluationWorkspace, member } from './auth'
 import { RulesetCache } from './cache'
 import { HttpError } from './errors'
 import { Metrics } from './metrics'
+import { writeEvent } from './outbox'
 import { projectForSlug } from './projects'
 
 export function evaluationRoutes(app: FastifyInstance, db: PrismaClient, cache: RulesetCache, metrics: Metrics): void {
@@ -28,8 +29,11 @@ export function evaluationRoutes(app: FastifyInstance, db: PrismaClient, cache: 
             trace: JSON.parse(JSON.stringify(result.trace)) as Prisma.InputJsonArray,
           },
         })
+        const payload = { evaluationId: entry.id, projectSlug: slug, version: version.number, outcome: result.outcome }
+        await writeEvent(tx, workspaceId, 'evaluation.completed', payload)
         if (result.outcome === 'review') {
-          await tx.reviewTask.create({ data: { evaluationId: entry.id } })
+          const review = await tx.reviewTask.create({ data: { evaluationId: entry.id } })
+          await writeEvent(tx, workspaceId, 'review.created', { ...payload, reviewId: review.id })
         }
         return entry
       })

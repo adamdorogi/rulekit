@@ -16,6 +16,8 @@
     "build": "npm run build -w @rulekit/engine && npm run db:generate -w @rulekit/api && npm run build -w @rulekit/api && npm run build -w @rulekit/web",
     "test": "npm run build -w @rulekit/engine && npm run db:generate -w @rulekit/api && npm test -w @rulekit/engine && npm test -w @rulekit/api",
     "db:migrate": "npm run db:migrate -w @rulekit/api",
-    "db:setup": "npm run build -w @rulekit/engine && npm run db:generate -w @rulekit/api && npm run build -w @rulekit/api && npm run db:migrate && npm run db:seed -w @rulekit/api"
+    "db:setup": "npm run build -w @rulekit/engine && npm run db:generate -w @rulekit/api && npm run build -w @rulekit/api && npm run db:migrate && npm run db:seed -w @rulekit/api",
+    "dev": "npm run build -w @rulekit/engine && npm run db:generate -w @rulekit/api && npm run build -w @rulekit/api && npm run dev:stack",
+    "dev:stack": "sh -c 'node apps/api/dist/index.js & api=$!; node apps/api/dist/worker.js & worker=$!; node node_modules/next/dist/bin/next dev apps/web & web=$!; trap \"kill $api $worker $web 2>/dev/null || true\" EXIT INT TERM; wait \"$web\"'"
   }
 }

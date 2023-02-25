@@ -17,3 +17,10 @@ export function newAPIKey(): string {
   return `rk_live_${randomBytes(32).toString('base64url')}`
 }
 
+export function endpointSecret(signingKey: string): string {
+  return createHmac('sha256', signingKey).update(randomBytes(32)).digest('hex')
+}
+
+export function signature(body: string, secret: string): string {
+  return `sha256=${createHmac('sha256', secret).update(body).digest('hex')}`
+}

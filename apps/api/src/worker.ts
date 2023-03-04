@@ -35,6 +35,11 @@ export async function processDelivery(
       where: { id: row.id, generation: row.generation, attempts: row.attempts, status: 'pending' },
       data: { attempts: attempt, status, statusCode, lastError, attemptedAt: new Date() },
     })
+    if (changed.count) {
+      await tx.webhookAttempt.create({
+        data: { deliveryId: row.id, generation: row.generation, number: attempt, statusCode, error: lastError },
+      })
+    }
     return changed.count === 1
   })
   if (updated && lastError && status === 'pending') throw new Error(lastError)

@@ -175,7 +175,21 @@ model WebhookDelivery {
   lastError   String?
   createdAt   DateTime        @default(now())
   attemptedAt DateTime?
+  attemptLog  WebhookAttempt[]
 
   @@unique([eventId, endpointId])
   @@index([status, attemptedAt])
+}
+
+model WebhookAttempt {
+  id          String          @id @default(cuid())
+  deliveryId  String
+  delivery    WebhookDelivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  generation  Int
+  number      Int
+  statusCode  Int?
+  error       String?
+  createdAt   DateTime        @default(now())
+
+  @@unique([deliveryId, generation, number])
 }

@@ -37,4 +37,34 @@ export function webhookRoutes(app: FastifyInstance, db: PrismaClient): void {
     })
     return reply.code(201).send(row)
   })
+
+  app.get('/v1/webhooks/deliveries', async (request) => {
+    const { workspaceId } = await member(db, request, 'admin')
+    return db.webhookDelivery.findMany({
+      where: { endpoint: { workspaceId } },
+      include: deliveryDetails,
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    })
+  })
+
+  app.post<{ Params: { id: string } }>('/v1/webhooks/deliveries/:id/retry', async (request) => {
+    const { workspaceId } = await member(db, request, 'admin')
+    const { id } = request.params
+    return db.$transaction(async (tx) => {
+      const changed = await tx.webhookDelivery.updateMany({
+        where: { id, status: 'dead', endpoint: { workspaceId } },
+        data: {
+          status: 'pending',
+          attempts: 0,
+          generation: { increment: 1 },
+          attemptedAt: null,
+          lastError: null,
+          statusCode: null,
+        },
+      })
+      if (!changed.count) throw new HttpError(404, 'Dead delivery not found')
+      return tx.webhookDelivery.findUniqueOrThrow({ where: { id }, include: deliveryDetails })
+    })
+  })
 }

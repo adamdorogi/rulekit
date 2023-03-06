@@ -13,6 +13,7 @@ import { evaluationRoutes } from './evaluations'
 import { Metrics } from './metrics'
 import { projectRoutes } from './projects'
 import { reviewRoutes } from './reviews'
+import { webhookRoutes } from './webhooks'
 
 export async function buildServer(options: FastifyServerOptions = {}) {
   const app = Fastify({
@@ -68,10 +69,17 @@ export async function buildServer(options: FastifyServerOptions = {}) {
   await app.register(cookie, { secret: settings.cookieSecret })
   await app.register(jwt, { secret: settings.jwtSecret, cookie: { cookieName: 'rk_session', signed: true } })
 
+  app.get('/healthz', async (_request, reply) => {
+    const checks = await Promise.allSettled([db.$queryRaw`SELECT 1`, redis.ping()])
+    const [postgres, cacheStatus] = checks.map((check) => check.status === 'fulfilled' ? 'ok' : 'unavailable')
+    const healthy = postgres === 'ok' && cacheStatus === 'ok'
+    return reply.code(healthy ? 200 : 503).send({ status: healthy ? 'ok' : 'unavailable', postgres, redis: cacheStatus })
+  })
   app.get('/metrics', (_request, reply) => reply.type('text/plain; version=0.0.4; charset=utf-8').send(metrics.render()))
   authRoutes(app, db)
   projectRoutes(app, db, cache)
   evaluationRoutes(app, db, cache, metrics)
   reviewRoutes(app, db)
+  webhookRoutes(app, db)
   return app
 }

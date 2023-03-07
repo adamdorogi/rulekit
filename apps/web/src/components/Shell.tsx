@@ -8,9 +8,10 @@ import { api, ApiError, sessionPath } from '../lib/api';
 import type { Session } from '../lib/types';
 import { RequestError } from './Feedback';
 
-const sections = [
+const sections: { href: string; text: string; icon: string; admin?: boolean }[] = [
   { href: '/projects', text: 'Projects', icon: 'collection' },
   { href: '/reviews', text: 'Review queue', icon: 'inboxes' },
+  { href: '/webhooks', text: 'Webhooks', icon: 'broadcast', admin: true },
 ];
 
 export function Shell({ title, children }: { title: string; children: ReactNode | ((session: Session) => ReactNode) }) {
@@ -41,7 +42,7 @@ export function Shell({ title, children }: { title: string; children: ReactNode 
       <aside className="console-aside bg-dark text-light p-3">
         <Link href="/projects"><a className="d-block h5 text-white text-decoration-none mb-3">rulekit</a></Link>
         <Nav className="flex-column gap-1" aria-label="Workspace">
-          {sections.map((item) => (
+          {sections.filter((item) => !item.admin || session.role === 'admin').map((item) => (
             <Link key={item.href} href={item.href} passHref>
               <Nav.Link active={router.pathname.startsWith(item.href)} className="py-2">
                 <i className={'bi bi-' + item.icon + ' me-2'} aria-hidden="true" />{item.text}

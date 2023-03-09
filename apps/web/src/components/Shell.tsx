@@ -8,10 +8,11 @@ import { api, ApiError, sessionPath } from '../lib/api';
 import type { Session } from '../lib/types';
 import { RequestError } from './Feedback';
 
-const sections: { href: string; text: string; icon: string; admin?: boolean }[] = [
+const sections = [
   { href: '/projects', text: 'Projects', icon: 'collection' },
   { href: '/reviews', text: 'Review queue', icon: 'inboxes' },
   { href: '/webhooks', text: 'Webhooks', icon: 'broadcast', admin: true },
+  { href: '/settings/api-keys', text: 'API keys', icon: 'key', admin: true },
 ];
 
 export function Shell({ title, children }: { title: string; children: ReactNode | ((session: Session) => ReactNode) }) {

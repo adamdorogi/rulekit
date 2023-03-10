@@ -1,9 +1,11 @@
 import type { Ruleset } from '@rulekit/engine';
+import dynamic from 'next/dynamic';
 import { useState, type FormEvent } from 'react';
 import Alert from 'react-bootstrap/Alert';
 import Button from 'react-bootstrap/Button';
 import Form from 'react-bootstrap/Form';
 import Modal from 'react-bootstrap/Modal';
+import Nav from 'react-bootstrap/Nav';
 import useSWR, { useSWRConfig } from 'swr';
 import { RequestError } from '../../../components/Feedback';
 import { ProjectPage } from '../../../components/ProjectPage';
@@ -12,6 +14,7 @@ import { api, projectPath, projectsPath } from '../../../lib/api';
 import { summarizeChanges } from '../../../lib/diff';
 import type { Draft, Project, Session, Version } from '../../../lib/types';
 
+const FlowView = dynamic(() => import('../../../components/FlowView'), { ssr: false });
 
 function PublishModal({ previous, current, onClose, onPublish, busy, error }: {
   previous?: Ruleset;
@@ -34,22 +37,22 @@ function PublishModal({ previous, current, onClose, onPublish, busy, error }: {
       <Modal.Header closeButton={!busy}><Modal.Title>Publish Version</Modal.Title></Modal.Header>
       <Form onSubmit={submit}>
         <Modal.Body>
-      <RequestError error={error} />
-      <ul className="small">
+          <RequestError error={error} />
+          <ul className="small">
             <li>Added {diff.added.length ? <code>{diff.added.join(', ')}</code> : '-'}</li>
             <li>Edited {diff.edited.length ? <code>{diff.edited.join(', ')}</code> : '-'}</li>
             <li>Removed {diff.removed.length ? <code>{diff.removed.join(', ')}</code> : '-'}</li>
             {diff.reordered && <li>Rule order changed</li>}
             {diff.defaultsChanged && <li>Ruleset defaults changed</li>}
-      </ul>
-      <Form.Group controlId="release-note">
+          </ul>
+          <Form.Group controlId="release-note">
             <Form.Label>Release note</Form.Label>
             <Form.Control size="sm" value={note} onChange={(event) => setNote(event.target.value)} />
-      </Form.Group>
+          </Form.Group>
         </Modal.Body>
         <Modal.Footer>
-      <Button size="sm" variant="outline-secondary" onClick={onClose} disabled={busy}>Cancel</Button>
-      <Button type="submit" size="sm" disabled={busy}>{busy ? 'Publishing...' : 'Publish'}</Button>
+          <Button size="sm" variant="outline-secondary" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button type="submit" size="sm" disabled={busy}>{busy ? 'Publishing...' : 'Publish'}</Button>
         </Modal.Footer>
       </Form>
     </Modal>
@@ -62,6 +65,7 @@ function Rules({ project, session }: { project: Project; session: Session }) {
   const { data: draft, error: draftError, mutate: refreshDraft } = useSWR<Draft>(base + '/draft');
   const { data: versions, error: versionsError } = useSWR<Version[]>(base + '/versions');
   const [edited, setEdited] = useState<Ruleset>();
+  const [tab, setTab] = useState('table');
   const [modal, setModal] = useState<'publish'>();
   const [error, setError] = useState<unknown>();
   const [notice, setNotice] = useState('');
@@ -110,7 +114,13 @@ function Rules({ project, session }: { project: Project; session: Session }) {
 
   return (
     <>
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <Nav variant="pills" className="mb-3 small gap-1" activeKey={tab} onSelect={(key) => { if (key) setTab(key); }} aria-label="Rules views">
+        <Nav.Item><Nav.Link as="button" eventKey="table" className="py-1 px-2">Rules table</Nav.Link></Nav.Item>
+        <Nav.Item><Nav.Link as="button" eventKey="flow" className="py-1 px-2">Flow view</Nav.Link></Nav.Item>
+      </Nav>
+      {tab === 'flow' ? <FlowView version={project.activeVersion} /> : (
+        <>
+          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
             <h2 className="h5 mb-0">Draft {edited && <span className="small text-secondary">(unsaved)</span>}</h2>
             {canEdit && ruleset && (
               <div className="d-flex gap-2 flex-wrap">
@@ -118,10 +128,12 @@ function Rules({ project, session }: { project: Project; session: Session }) {
                 <Button size="sm" disabled={busy || (!versions && project.activeVersion !== null)} onClick={() => { setError(undefined); setModal('publish'); }}>Publish Version</Button>
               </div>
             )}
-      </div>
-      <RequestError error={draftError || versionsError || (!modal && error)} />
-      {notice && <Alert variant="success" className="py-2">{notice}</Alert>}
-      {ruleset ? <RuleEditor ruleset={ruleset} readOnly={!canEdit || busy} onChange={setEdited} /> : !draftError && <p>Loading draft...</p>}
+          </div>
+          <RequestError error={draftError || versionsError || (!modal && error)} />
+          {notice && <Alert variant="success" className="py-2">{notice}</Alert>}
+          {ruleset ? <RuleEditor ruleset={ruleset} readOnly={!canEdit || busy} onChange={setEdited} /> : !draftError && <p>Loading draft...</p>}
+        </>
+      )}
       {modal === 'publish' && ruleset && <PublishModal previous={previous?.ruleset} current={ruleset} onClose={() => setModal(undefined)} onPublish={(note) => void publish(note)} busy={busy} error={error} />}
     </>
   );

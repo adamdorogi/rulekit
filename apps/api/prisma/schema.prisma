@@ -117,11 +117,13 @@ model EvaluationLog {
   version        RulesetVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
   versionNumber  Int
   input          Json
+  inputHash      String?
   outputs        Json
   matchedRuleIds String[]
   outcome        Outcome
   durationUs     Int
   trace          Json
+  idempotencyKey String?
   createdAt      DateTime       @default(now())
   review         ReviewTask?
 

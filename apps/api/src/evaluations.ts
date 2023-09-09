@@ -24,6 +24,12 @@ function resultOf(log: EvaluationLog, inputHash: string) {
   }
 }
 
+function csvCell(value: string | number): string {
+  const raw = String(value)
+  const safe = /^[\s]*[=+\-@]/.test(raw) || /^[\t\r\n]/.test(raw) ? `'${raw}` : raw
+  return `"${safe.replace(/"/g, '""')}"`
+}
+
 export function evaluationRoutes(app: FastifyInstance, db: PrismaClient, cache: RulesetCache, metrics: Metrics): void {
   app.post<{ Params: { slug: string } }>('/v1/evaluate/:slug', async (request, reply) => {
     const workspaceId = await evaluationWorkspace(db, request)
@@ -81,4 +87,28 @@ export function evaluationRoutes(app: FastifyInstance, db: PrismaClient, cache: 
       throw error
     }
   })
+
+  app.get<{ Params: { slug: string }; Querystring: { format?: string } }>(
+    '/v1/projects/:slug/evaluations', async (request, reply) => {
+      const { workspaceId } = await member(db, request)
+      const { slug } = request.params
+      const format = z.enum(['json', 'csv']).default('json').parse(request.query.format)
+      const project = await projectForSlug(db, workspaceId, slug)
+      const logs = await db.evaluationLog.findMany({
+        where: { projectId: project.id },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: 1000,
+      })
+      reply.header('content-disposition', `attachment; filename="${slug}-evaluations.${format}"`)
+      if (format === 'json') return logs
+      const csv = [
+        'id,createdAt,version,outcome,durationUs,input,matchedRuleIds,outputs',
+        ...logs.map((log) => [
+          log.id, log.createdAt.toISOString(), log.versionNumber, log.outcome, log.durationUs,
+          JSON.stringify(log.input), JSON.stringify(log.matchedRuleIds), JSON.stringify(log.outputs),
+        ].map(csvCell).join(',')),
+      ].join('\r\n')
+      return reply.type('text/csv; charset=utf-8').send(csv)
+    },
+  )
 }

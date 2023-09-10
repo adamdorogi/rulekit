@@ -57,6 +57,10 @@ function VersionHistory({ project, session }: { project: Project; session: Sessi
     <>
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h2 className="h5 mb-0">Version history</h2>
+        <div className="d-flex gap-2">
+          <a className="btn btn-sm btn-outline-secondary" href={'/api' + base + '/evaluations?format=json'} download>Export logs JSON</a>
+          <a className="btn btn-sm btn-outline-secondary" href={'/api' + base + '/evaluations?format=csv'} download>Export logs CSV</a>
+        </div>
       </div>
       <RequestError error={error} />
       {notice && <Alert variant="success" className="py-2">{notice}</Alert>}

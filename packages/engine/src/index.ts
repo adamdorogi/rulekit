@@ -1,3 +1,3 @@
 export * from './types';
-export { conditionSchema, rulesetSchema } from './schema';
+export { conditionSchema, rulesetSchema, storedRulesetSchema } from './schema';
 export { compileRuleset, evaluateRuleset } from './evaluate';

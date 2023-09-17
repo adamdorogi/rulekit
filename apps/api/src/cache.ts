@@ -1,4 +1,4 @@
-import { compileRuleset, rulesetSchema } from '@rulekit/engine'
+import { compileRuleset, storedRulesetSchema } from '@rulekit/engine'
 import { PrismaClient } from '@prisma/client'
 import Redis from 'ioredis'
 import LRUCache from 'lru-cache'
@@ -42,7 +42,7 @@ export class RulesetCache {
       projectId: project.id,
       id: row.id,
       number: row.number,
-      evaluate: compileRuleset(rulesetSchema.parse(row.ruleset)),
+      evaluate: compileRuleset(storedRulesetSchema.parse(row.ruleset)),
     }
     this.compiled.set(versionKey, version)
     // Do not refill a pointer invalidated while its database read was in flight.

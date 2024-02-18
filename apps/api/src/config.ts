@@ -20,4 +20,7 @@ export const settings = {
   webOrigin: process.env.WEB_ORIGIN || 'http://localhost:3000',
   secureCookie: process.env.COOKIE_SECURE === 'true'
     || (process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE !== 'false'),
+  openAIKey: process.env.OPENAI_API_KEY,
+  openAIBaseUrl: process.env.OPENAI_BASE_URL,
+  openAIModel: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
 }

@@ -91,6 +91,7 @@ model Draft {
   projectId  String   @id
   project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   ruleset    Json
+  sourceText String?
   updatedAt  DateTime @updatedAt
 }
 

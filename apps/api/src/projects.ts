@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify'
 import { Prisma, PrismaClient } from '@prisma/client'
-import { evaluateRuleset, rulesetSchema } from '@rulekit/engine'
+import { analyzeRuleset, evaluateRuleset, rulesetSchema, storedRulesetSchema } from '@rulekit/engine'
 import { z } from 'zod'
 import { member } from './auth'
 import { RulesetCache } from './cache'
@@ -20,7 +20,7 @@ const projectBody = z.object({
 type ProjectRow = Prisma.ProjectGetPayload<{ include: typeof projectDetails }>
 
 function summary(row: ProjectRow, evaluations24h = 0) {
-  const content = rulesetSchema.safeParse((row.activeVersion || row.draft)?.ruleset)
+  const content = storedRulesetSchema.safeParse((row.activeVersion || row.draft)?.ruleset)
   return {
     id: row.id,
     slug: row.slug,
@@ -38,9 +38,9 @@ export async function projectForSlug(db: PrismaClient, workspaceId: string, slug
   return result
 }
 
-function draftContents(draft: { ruleset: Prisma.JsonValue }) {
-  const ruleset = rulesetSchema.parse(draft.ruleset)
-  return { ...draft, ruleset, issues: [] }
+function draftContents(draft: { ruleset: Prisma.JsonValue; sourceText: string | null }) {
+  const ruleset = storedRulesetSchema.parse(draft.ruleset)
+  return { ...draft, ruleset, issues: analyzeRuleset(ruleset) }
 }
 
 export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: RulesetCache): void {
@@ -87,14 +87,15 @@ export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: Rul
   app.put<{ Params: { slug: string } }>('/v1/projects/:slug/draft', async (request) => {
     const { workspaceId } = await member(db, request, 'editor')
     const project = await projectForSlug(db, workspaceId, request.params.slug)
-    const { ruleset } = z.object({
+    const { ruleset, sourceText } = z.object({
       ruleset: rulesetSchema,
+      sourceText: z.string().max(48000).nullable().optional(),
     }).parse(request.body)
     const json = ruleset as unknown as Prisma.InputJsonObject
     const draft = await db.draft.upsert({
       where: { projectId: project.id },
-      update: { ruleset: json },
-      create: { projectId: project.id, ruleset: json },
+      update: { ruleset: json, sourceText },
+      create: { projectId: project.id, ruleset: json, sourceText },
     })
     return draftContents(draft)
   })
@@ -109,6 +110,10 @@ export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: Rul
       const draft = await tx.draft.findUnique({ where: { projectId: project.id } })
       if (!draft) throw new HttpError(404, 'Draft not found')
       const ruleset = rulesetSchema.parse(draft.ruleset)
+      const issues = analyzeRuleset(ruleset)
+      if (issues.some((issue) => issue.severity === 'error')) {
+        throw new HttpError(422, 'Resolve draft conflicts before publishing', issues)
+      }
       const last = await tx.rulesetVersion.findFirst({ where: { projectId: project.id }, orderBy: { number: 'desc' } })
       const release = await tx.rulesetVersion.create({
         data: {
@@ -153,6 +158,6 @@ export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: Rul
     const project = await projectForSlug(db, workspaceId, request.params.slug)
     const row = source === 'draft' ? project.draft : project.activeVersion
     if (!row) throw new HttpError(404, 'Ruleset not found')
-    return evaluateRuleset(rulesetSchema.parse(row.ruleset), input)
+    return evaluateRuleset(storedRulesetSchema.parse(row.ruleset), input)
   })
 }

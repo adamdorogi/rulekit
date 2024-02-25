@@ -10,6 +10,7 @@ import { invalidationChannel, RulesetCache } from './cache'
 import { settings } from './config'
 import { HttpError } from './errors'
 import { evaluationRoutes } from './evaluations'
+import { importRoutes } from './importer'
 import { Metrics } from './metrics'
 import { projectRoutes } from './projects'
 import { reviewRoutes } from './reviews'
@@ -81,5 +82,6 @@ export async function buildServer(options: FastifyServerOptions = {}) {
   evaluationRoutes(app, db, cache, metrics)
   reviewRoutes(app, db)
   webhookRoutes(app, db)
+  importRoutes(app, db)
   return app
 }

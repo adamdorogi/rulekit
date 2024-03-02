@@ -1,10 +1,26 @@
 import Alert from 'react-bootstrap/Alert';
 import Badge from 'react-bootstrap/Badge';
+import { ApiError } from '../lib/api';
 import type { Outcome } from '@rulekit/engine';
 
 export function RequestError({ error }: { error: unknown }) {
   if (!error) return null;
-  return <Alert variant="danger" role="alert">{error instanceof Error ? error.message : String(error)}</Alert>;
+  const details = error instanceof ApiError && Array.isArray(error.details) ? error.details : [];
+  return (
+    <Alert variant="danger" role="alert">
+      {error instanceof Error ? error.message : String(error)}
+      {details.length > 0 && (
+        <ul className="mb-0 mt-1">
+          {details.map((issue, index) => (
+            <li key={index}>
+              {Array.isArray(issue.path) ? issue.path.join('.') + ' - ' : issue.ruleId ? issue.ruleId + ' - ' : ''}
+              {issue.message}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Alert>
+  );
 }
 
 export function OutcomeBadge({ outcome }: { outcome: Outcome }) {

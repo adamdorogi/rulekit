@@ -1,5 +1,5 @@
 export class ApiError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(readonly status: number, message: string, readonly details: unknown = undefined) {
     super(message);
   }
 }
@@ -15,7 +15,7 @@ export async function api<T>(path: string, options: { method?: string; body?: un
   if (response.status === 204) return undefined as T;
   const data = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new ApiError(response.status, data?.message || data?.error || 'Request failed (' + response.status + ').');
+    throw new ApiError(response.status, data?.message || data?.error || 'Request failed (' + response.status + ').', data?.details);
   }
   return data as T;
 }

@@ -8,6 +8,7 @@ import Modal from 'react-bootstrap/Modal';
 import Nav from 'react-bootstrap/Nav';
 import useSWR, { useSWRConfig } from 'swr';
 import { RequestError } from '../../../components/Feedback';
+import { DraftIssues, ImportPolicy } from '../../../components/ImportPolicy';
 import { ProjectPage } from '../../../components/ProjectPage';
 import { RuleEditor } from '../../../components/RuleEditor';
 import { api, projectPath, projectsPath } from '../../../lib/api';
@@ -66,7 +67,7 @@ function Rules({ project, session }: { project: Project; session: Session }) {
   const { data: versions, error: versionsError } = useSWR<Version[]>(base + '/versions');
   const [edited, setEdited] = useState<Ruleset>();
   const [tab, setTab] = useState('table');
-  const [modal, setModal] = useState<'publish'>();
+  const [modal, setModal] = useState<'publish' | 'import'>();
   const [error, setError] = useState<unknown>();
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
@@ -124,6 +125,7 @@ function Rules({ project, session }: { project: Project; session: Session }) {
             <h2 className="h5 mb-0">Draft {edited && <span className="small text-secondary">(unsaved)</span>}</h2>
             {canEdit && ruleset && (
               <div className="d-flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline-secondary" disabled={busy || Boolean(edited)} onClick={() => setModal('import')}>Import Policy PDF</Button>
                 <Button size="sm" variant="outline-secondary" disabled={busy || !edited} onClick={() => void save()}>Save draft</Button>
                 <Button size="sm" disabled={busy || (!versions && project.activeVersion !== null)} onClick={() => { setError(undefined); setModal('publish'); }}>Publish Version</Button>
               </div>
@@ -131,10 +133,18 @@ function Rules({ project, session }: { project: Project; session: Session }) {
           </div>
           <RequestError error={draftError || versionsError || (!modal && error)} />
           {notice && <Alert variant="success" className="py-2">{notice}</Alert>}
+          {draft && <DraftIssues issues={draft.issues} />}
+          {draft?.sourceText && <details className="mb-3"><summary className="small">Imported source text</summary><pre className="json-display bg-light border small p-2 mt-2">{draft.sourceText}</pre></details>}
           {ruleset ? <RuleEditor ruleset={ruleset} readOnly={!canEdit || busy} onChange={setEdited} /> : !draftError && <p>Loading draft...</p>}
         </>
       )}
       {modal === 'publish' && ruleset && <PublishModal previous={previous?.ruleset} current={ruleset} onClose={() => setModal(undefined)} onPublish={(note) => void publish(note)} busy={busy} error={error} />}
+      {modal === 'import' && <ImportPolicy projectId={project.id} slug={project.slug} onClose={() => setModal(undefined)} onLoad={(imported) => {
+        setEdited(undefined);
+        setModal(undefined);
+        setNotice('Imported rules saved to draft.');
+        void refreshDraft(imported, false);
+      }} />}
     </>
   );
 }

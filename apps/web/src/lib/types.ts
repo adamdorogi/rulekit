@@ -17,8 +17,17 @@ export interface Project {
   lastPublished: string | null;
 }
 
+export interface DraftIssue {
+  ruleId: string;
+  message: string;
+  code: string;
+  severity: 'warning' | 'error';
+}
+
 export interface Draft {
   ruleset: Ruleset;
+  sourceText: string | null;
+  issues: DraftIssue[];
 }
 
 export interface Version {

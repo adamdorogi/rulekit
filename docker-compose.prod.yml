@@ -1,5 +1,3 @@
-version: '3.8'
-
 x-backend: &backend
   image: rulekit-api:local
   build:
@@ -13,10 +11,12 @@ x-backend: &backend
     COOKIE_SECURE: ${COOKIE_SECURE:-true}
     WEBHOOK_SIGNING_KEY: ${WEBHOOK_SIGNING_KEY:?set WEBHOOK_SIGNING_KEY}
     WEB_ORIGIN: ${WEB_ORIGIN:?set WEB_ORIGIN to the web console origin}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
 
 services:
   postgres:
-    image: postgres:14-alpine
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-rulekit}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}

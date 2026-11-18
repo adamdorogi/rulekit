@@ -65,7 +65,7 @@ async function run(): Promise<void> {
     if (!redis.status.startsWith('ready')) return
     const pending = await db.webhookDelivery.findMany({
       where: { status: 'pending' },
-      orderBy: { createdAt: 'asc' },
+      orderBy: [{ attemptedAt: { sort: 'asc', nulls: 'first' } }, { createdAt: 'asc' }],
       take: 200,
       select: { id: true, generation: true, attempts: true },
     })

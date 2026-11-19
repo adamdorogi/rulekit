@@ -6,7 +6,7 @@ import { RulesetCache } from './cache'
 import { canonicalJson, sha256 } from './crypto'
 import { HttpError } from './errors'
 import { Metrics } from './metrics'
-import { writeEvent } from './outbox'
+import { writeEvaluation } from './evaluation-write'
 import { projectForSlug } from './projects'
 
 function resultOf(log: EvaluationLog, inputHash: string) {
@@ -49,43 +49,18 @@ export function evaluationRoutes(app: FastifyInstance, db: PrismaClient, cache: 
       }
     }
     const result = version.evaluate(input)
-    try {
-      const log = await db.$transaction(async (tx) => {
-        const entry = await tx.evaluationLog.create({
-          data: {
-            projectId: version.projectId,
-            versionId: version.id,
-            versionNumber: version.number,
-            input,
-            inputHash,
-            idempotencyKey,
-            outcome: result.outcome,
-            outputs: result.outputs as Prisma.InputJsonObject,
-            matchedRuleIds: result.matchedRuleIds,
-            durationUs: result.durationUs,
-            trace: JSON.parse(JSON.stringify(result.trace)) as Prisma.InputJsonArray,
-          },
-        })
-        const payload = { evaluationId: entry.id, projectSlug: slug, version: version.number, outcome: result.outcome }
-        await writeEvent(tx, workspaceId, 'evaluation.completed', payload)
-        if (result.outcome === 'review') {
-          const review = await tx.reviewTask.create({ data: { evaluationId: entry.id } })
-          await writeEvent(tx, workspaceId, 'review.created', { ...payload, reviewId: review.id })
-        }
-        return entry
-      })
+    const entry = await writeEvaluation(db, {
+      workspaceId, projectId: version.projectId, slug, versionId: version.id, versionNumber: version.number,
+      input, inputHash, idempotencyKey, result,
+    })
+    if (entry) {
       metrics.record(result.outcome, result.durationUs, hit)
-      return resultOf(log, inputHash)
-    } catch (error) {
-      if (idempotencyKey && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-        const previous = await findLog(idempotencyKey)
-        if (previous) {
-          reply.header('idempotency-replayed', 'true')
-          return resultOf(previous, inputHash)
-        }
-      }
-      throw error
+      return { ...result, evaluationId: entry.id, version: version.number }
     }
+    const previous = idempotencyKey && await findLog(idempotencyKey)
+    if (!previous) throw new HttpError(409, 'Evaluation was already recorded')
+    reply.header('idempotency-replayed', 'true')
+    return resultOf(previous, inputHash)
   })
 
   app.get<{ Params: { slug: string }; Querystring: { format?: string } }>(

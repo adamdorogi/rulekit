@@ -76,10 +76,11 @@ function Rules({ project, session }: { project: Project; session: Session }) {
   const previous = versions?.find((version) => version.number === project.activeVersion);
 
   async function saveDraft() {
-    if (!edited) return;
+    if (!edited) return draft;
     const saved = await api<Draft>(base + '/draft', { method: 'PUT', body: { ruleset: edited } });
     await refreshDraft(saved, false);
     setEdited(undefined);
+    return saved;
   }
 
   async function save() {
@@ -101,8 +102,9 @@ function Rules({ project, session }: { project: Project; session: Session }) {
     setError(undefined);
     setNotice('');
     try {
-      await saveDraft();
-      const version = await api<Version>(base + '/publish', { method: 'POST', body: { note } });
+      const saved = await saveDraft();
+      if (!saved) return;
+      const version = await api<Version>(base + '/publish', { method: 'POST', body: { note, expectedChecksum: saved.checksum } });
       setModal(undefined);
       setNotice('Published v' + version.number + '.');
       await Promise.all([refresh(base), refresh(base + '/versions'), refresh(projectsPath)]);

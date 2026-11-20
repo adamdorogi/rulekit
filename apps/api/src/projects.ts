@@ -40,7 +40,7 @@ export async function projectForSlug(db: PrismaClient, workspaceId: string, slug
 
 function draftContents(draft: { ruleset: Prisma.JsonValue; sourceText: string | null }) {
   const ruleset = storedRulesetSchema.parse(draft.ruleset)
-  return { ...draft, ruleset, issues: analyzeRuleset(ruleset) }
+  return { ...draft, ruleset, checksum: sha256(canonicalJson(ruleset)), issues: analyzeRuleset(ruleset) }
 }
 
 export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: RulesetCache): void {
@@ -104,12 +104,19 @@ export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: Rul
     const { workspaceId } = await member(db, request, 'editor')
     const { slug } = request.params
     const project = await projectForSlug(db, workspaceId, slug)
-    const { note } = z.object({ note: z.string().trim().max(2000).optional() }).parse(request.body || {})
+    const { note, expectedChecksum } = z.object({
+      note: z.string().trim().max(2000).optional(),
+      expectedChecksum: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+    }).parse(request.body || {})
     const version = await db.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Project" WHERE id = ${project.id} FOR UPDATE`
       const draft = await tx.draft.findUnique({ where: { projectId: project.id } })
       if (!draft) throw new HttpError(404, 'Draft not found')
       const ruleset = rulesetSchema.parse(draft.ruleset)
+      const checksum = sha256(canonicalJson(ruleset))
+      if (expectedChecksum && expectedChecksum !== checksum) {
+        throw new HttpError(409, 'Draft changed. Reload it before publishing')
+      }
       const issues = analyzeRuleset(ruleset)
       if (issues.some((issue) => issue.severity === 'error')) {
         throw new HttpError(422, 'Resolve draft conflicts before publishing', issues)
@@ -121,7 +128,7 @@ export function projectRoutes(app: FastifyInstance, db: PrismaClient, cache: Rul
           number: (last?.number || 0) + 1,
           note,
           ruleset: ruleset as unknown as Prisma.InputJsonObject,
-          checksum: sha256(canonicalJson(ruleset)),
+          checksum,
         },
       })
       await tx.project.update({ where: { id: project.id }, data: { activeVersionId: release.id } })

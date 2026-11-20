@@ -26,6 +26,7 @@ export interface DraftIssue {
 
 export interface Draft {
   ruleset: Ruleset;
+  checksum: string;
   sourceText: string | null;
   issues: DraftIssue[];
 }

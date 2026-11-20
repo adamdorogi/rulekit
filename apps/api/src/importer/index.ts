@@ -3,6 +3,7 @@ import { Prisma, PrismaClient } from '@prisma/client'
 import { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import { member } from '../auth'
+import { canonicalJson, sha256 } from '../crypto'
 import { HttpError } from '../errors'
 import { extractWithModel } from './model'
 import { extractRows, fixtureText } from './offline'
@@ -55,6 +56,6 @@ export function importRoutes(app: FastifyInstance, db: PrismaClient): void {
         update: { ruleset: json, sourceText },
       })
     }
-    return { ruleset, sourceText, issues }
+    return { ruleset, sourceText, issues, checksum: sha256(canonicalJson(ruleset)) }
   })
 }

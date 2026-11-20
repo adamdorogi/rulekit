@@ -1,0 +1,38 @@
+name: ci
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rulekit
+          POSTGRES_PASSWORD: rulekit
+          POSTGRES_DB: rulekit
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rulekit -d rulekit"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://rulekit:rulekit@localhost:5432/rulekit?schema=public
+      REDIS_URL: redis://localhost:6379
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm run db:migrate
+      - run: npm test

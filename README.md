@@ -4,6 +4,8 @@ Self-hosted JSON decision engine and approval queue for pulling underwriting /
 eligibility rules out of spreadsheets. Evaluates versioned rulesets over HTTP
 with an audit trail, signed webhook outbox, and a Bootstrap console.
 
+![playground](assets/playground.gif)
+
 ## Architecture / request flow
 
 ```mermaid
@@ -27,11 +29,11 @@ flowchart LR
 
 ## Quick start (local dev)
 
-Node 18.12+ and Docker Compose. Use the sample credentials on local instances.
+Node 22.12+ and Docker Compose v2. Use the sample credentials on local instances.
 
 ```sh
 cp .env.example .env
-docker-compose up -d
+docker compose up -d
 npm install
 npm run db:setup
 npm run dev
@@ -44,13 +46,14 @@ Screening in the sample workspace.
 ```sh
 curl -sS http://localhost:4000/v1/evaluate/motor-au \
   -H 'Authorization: Bearer rk_live_rulekit_demo_motor_au' \
+  -H 'Idempotency-Key: motor-case-001' \
   -H 'Content-Type: application/json' \
   --data '{"applicant":{"age":22},"vehicle":{"value_aud":92000},"history":{"at_fault_claims":1}}'
 ```
 
 Use Playground to inspect the active version and see the inputs checked by each
 rule. Live requests write to the audit log and open review tasks for review
-outcomes. 
+outcomes. Supply a unique idempotency key per request you might retry.
 
 ## Rules, versions and imports
 
@@ -60,6 +63,13 @@ outcomes.
   and returns the highest-severity matching outcome.
 - Edit and save the draft, then publish from Rules. Versions are immutable.
   A rollback changes the active pointer and keeps the draft.
+- Import a policy PDF or text table from Rules. Check the extracted clauses,
+  source snippets and analyzer findings before publishing. The offline parser
+  handles simple threshold rows such as `applicant.age < 25 -> review`.
+- Set `OPENAI_API_KEY` and optionally `OPENAI_BASE_URL` to enable extraction via
+  an OpenAI-compatible endpoint. Set `OPENAI_MODEL` to select its model. Imported
+  policy text is sent to that endpoint.
+
 ## Webhook delivery
 
 Subscribe a public HTTPS endpoint to `evaluation.completed`, `review.created` or
@@ -83,8 +93,8 @@ attempts. Retry a dead delivery from its log entry.
   seed. Use a deployment-specific email, password and key.
 
 ```sh
-docker-compose -f docker-compose.prod.yml up -d --build
-docker-compose -f docker-compose.prod.yml exec \
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec \
   -e SEED_ADMIN_EMAIL -e SEED_ADMIN_PASSWORD -e SEED_API_KEY api \
   node apps/api/dist/seed.js
 ```
